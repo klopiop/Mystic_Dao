@@ -6,12 +6,6 @@
   // 函数文件路径（编译后的函数入口）
   "function": "functions/dist/index.js",
   
-  // 环境变量配置
-  "env": {
-    // 启用静态导出模式
-    "NEXT_EXPORT": "true"
-  },
-  
   // 构建命令配置
   "build": {
     // 安装依赖

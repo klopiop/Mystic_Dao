@@ -103,7 +103,7 @@ export async function handler(req: Request): Promise<Response> {
     await prisma.auditLog.create({
       data: {
         actorId: user.id,
-        action: 'REGISTER',
+        action: 'SIGNUP',
         message: 'New user registered',
         ip: req.headers.get('x-forwarded-for') || 'unknown',
         userAgent: req.headers.get('user-agent') || 'unknown',

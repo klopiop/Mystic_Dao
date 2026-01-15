@@ -13,7 +13,6 @@
   },
   "dependencies": {
     "@prisma/client": "^6.19.2",
-    "@prisma/adapter": "^2.11.1",
     "bcryptjs": "^3.0.3",
     "jsonwebtoken": "^9.0.2",
     "prisma": "^6.19.2"

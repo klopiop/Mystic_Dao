@@ -99,7 +99,7 @@ export async function handler(req: Request): Promise<Response> {
     await prisma.auditLog.create({
       data: {
         actorId: user.id,
-        action: 'DATA_EXPORT',
+        action: 'EXPORT_USERS',
         message: 'Admin exported all data',
         ip: req.headers.get('x-forwarded-for') || 'unknown',
         userAgent: req.headers.get('user-agent') || 'unknown',

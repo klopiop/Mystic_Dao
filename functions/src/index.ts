@@ -1,15 +1,21 @@
 // ESA 函数计算入口文件
-// 导出所有 API 路由处理函数
-
-import { handler as authLogin } from './auth/login.js';
-import { handler as authRegister } from './auth/register.js';
-import { handler as chatIndex } from './chat/index.js';
-import { handler as adminExport } from './admin/export.js';
-
-// 默认导出所有函数
 export default {
-  '/api/auth/login': authLogin,
-  '/api/auth/register': authRegister,
-  '/api/chat': chatIndex,
-  '/api/admin/export': adminExport,
+  async fetch(request: Request, env: any): Promise<Response> {
+    const url = new URL(request.url);
+    const path = url.pathname;
+    
+    // 简单的路由处理
+    if (path.startsWith('/api/')) {
+      // 返回 API 响应
+      return new Response(JSON.stringify({ message: 'API endpoint' }), {
+        headers: { 'Content-Type': 'application/json' },
+        status: 200
+      });
+    }
+    
+    // 返回默认响应
+    return new Response('Hello from ESA Functions!', {
+      status: 200
+    });
+  }
 };
