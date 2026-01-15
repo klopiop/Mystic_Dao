@@ -1,6 +1,9 @@
 import { NextResponse } from "next/server";
 import { getSessionUser } from "@/lib/auth";
 
+// 静态导出配置
+export const dynamic = "force-static";
+
 export async function POST(request: Request) {
   try {
     const session = await getSessionUser();

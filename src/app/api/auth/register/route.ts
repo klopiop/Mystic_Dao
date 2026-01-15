@@ -3,6 +3,9 @@ import { NextResponse } from "next/server";
 
 import { prisma } from "@/lib/db";
 
+// 静态导出配置
+export const dynamic = "force-static";
+
 export async function POST(request: Request) {
   try {
     let body;

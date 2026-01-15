@@ -4,6 +4,11 @@ import { prisma } from "@/lib/db";
 import { getDictionary, type Locale } from "@/lib/i18n";
 import { requireUser } from "@/lib/auth";
 
+// 为动态路由生成静态参数
+export function generateStaticParams() {
+  return [];
+}
+
 export default async function ResultPage({
   params,
 }: {

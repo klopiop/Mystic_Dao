@@ -6,6 +6,9 @@ import { prisma } from "@/lib/db";
 
 const JWT_SECRET = process.env.NEXTAUTH_SECRET || "dev-secret";
 
+// 静态导出配置
+export const dynamic = "force-static";
+
 export async function POST(request: Request) {
   try {
     let body;
