@@ -2,12 +2,12 @@
 
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useState, use } from "react";
+import { useState, use, Suspense } from "react";
 
 import { getDictionary, type Locale } from "@/lib/i18n";
 import { login } from "@/lib/api";
 
-export default function LoginPage({ params }: { params: Promise<{ locale: Locale }> }) {
+function LoginContent({ params }: { params: Promise<{ locale: Locale }> }) {
   const resolvedParams = use(params);
   const dict = getDictionary(resolvedParams.locale);
   const router = useRouter();
@@ -77,5 +77,13 @@ export default function LoginPage({ params }: { params: Promise<{ locale: Locale
         {dict.auth.switchToRegister}
       </Link>
     </div>
+  );
+}
+
+export default function LoginPage({ params }: { params: Promise<{ locale: Locale }> }) {
+  return (
+    <Suspense fallback={<div>Loading...</div>}>
+      <LoginContent params={params} />
+    </Suspense>
   );
 }

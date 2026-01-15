@@ -157,7 +157,7 @@ export async function handler(req: Request): Promise<Response> {
       }
 
       const data = (await openaiResponse.json()) as {
-        choices?: Array<{ message?: { content?: string }>;
+        choices?: Array<{ message?: { content?: string } }>;
       };
       reply = data.choices?.[0]?.message?.content || '';
     }

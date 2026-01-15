@@ -65,6 +65,7 @@ model Message {
 model AuditLog {
   id        String   @id @default(cuid())
   actorId  String
+  actor    User     @relation(fields: [actorId], references: [id], onDelete: Cascade)
   action    String
   message   String
   ip        String?

@@ -35,9 +35,9 @@ export async function POST(request: Request) {
     try {
       await prisma.auditLog.create({
         data: {
+          actorId: user.id,
           action: "SIGNUP",
           message: `User ${email} registered`,
-          targetUserId: user.id,
           ip: request.headers.get("x-forwarded-for") || "unknown",
           userAgent: request.headers.get("user-agent") || "unknown",
         },

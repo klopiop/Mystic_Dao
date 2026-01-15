@@ -1,5 +1,5 @@
-import { prisma } from '../../lib/prisma';
-import { getUserFromRequest } from '../../lib/auth';
+import { prisma } from '../lib/prisma';
+import { getUserFromRequest } from '../lib/auth';
 
 export async function handler(req: Request): Promise<Response> {
   // CORS 处理
@@ -34,13 +34,6 @@ export async function handler(req: Request): Promise<Response> {
         role: true,
         bannedAt: true,
         createdAt: true,
-        _count: {
-          select: {
-            conversations: true,
-          },
-        },
-      },
-      include: {
         _count: {
           select: {
             conversations: true,

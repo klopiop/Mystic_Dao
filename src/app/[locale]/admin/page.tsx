@@ -19,7 +19,7 @@ export default async function AdminPage({
   const audits = await prisma.auditLog.findMany({
     orderBy: { createdAt: "desc" },
     take: 20,
-    include: { actor: true, targetUser: true },
+    include: { actor: true },
   });
 
   return (
@@ -87,8 +87,7 @@ export default async function AdminPage({
             >
               <div className="text-gold-soft">{audit.action}</div>
               <div className="mt-1 text-xs text-zinc-500">
-                {audit.actor?.email || "system"} →
-                {audit.targetUser?.email || "-"} · {audit.createdAt.toLocaleString()}
+                {audit.actor?.email || "system"} · {audit.createdAt.toLocaleString()}
               </div>
               <div className="mt-2 text-xs text-zinc-500">
                 {audit.ip} · {audit.userAgent}

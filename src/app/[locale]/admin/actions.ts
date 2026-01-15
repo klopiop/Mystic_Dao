@@ -18,9 +18,8 @@ export async function banUser(formData: FormData) {
   await prisma.auditLog.create({
     data: {
       actorId: session.id,
-      targetUserId: userId,
       action: "BAN_USER",
-      message: "User banned",
+      message: `User ${userId} banned`,
       ip: "server",
       userAgent: "server",
     },
@@ -40,9 +39,8 @@ export async function unbanUser(formData: FormData) {
   await prisma.auditLog.create({
     data: {
       actorId: session.id,
-      targetUserId: userId,
       action: "UNBAN_USER",
-      message: "User unbanned",
+      message: `User ${userId} unbanned`,
       ip: "server",
       userAgent: "server",
     },

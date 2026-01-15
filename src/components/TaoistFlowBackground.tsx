@@ -76,7 +76,7 @@ export default function TaoistFlowBackground() {
           // Jitter
           this.x += (Math.random() - 0.5) * 0.5;
           this.y += (Math.random() - 0.5) * 0.5;
-        } else if (this.mode === "tracing_rune" && this.targetX !== null) {
+        } else if (this.mode === "tracing_rune" && this.targetX !== null && this.targetY !== null) {
            // Direct trace
            const dx = this.targetX - this.x;
            const dy = this.targetY - this.y;
