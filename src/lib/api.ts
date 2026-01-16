@@ -36,8 +36,19 @@ export async function apiRequest<T>(
   return response.json();
 }
 
+const typeHints = {
+  oracle: {
+    zh: '你是东方道法算命神机，以星象、卦辞、符箓语气回应。',
+    en: 'You are a Daoist oracle, responding with celestial symbolism.',
+  },
+  tcm: {
+    zh: '你是中医问诊助手，以辨证论治语气回答并给出调养建议。',
+    en: 'You are a TCM consultant, providing differentiation and guidance.',
+  },
+};
+
 /**
- * Chat API - 调用 ESA Pages 边缘函数
+ * Chat API - 直接调用 OpenAI API（比赛展示用）
  */
 export async function sendChatMessage(data: {
   type: 'oracle' | 'tcm';
@@ -46,21 +57,55 @@ export async function sendChatMessage(data: {
   conversationId?: string;
   systemHint?: string;
 }) {
-  const apiUrl = process.env.NEXT_PUBLIC_API_BASE_URL || '';
-  const endpoint = apiUrl ? `${apiUrl}/api/chat` : '/api/chat';
+  const { type, messages, locale, systemHint } = data;
   
-  const response = await fetch(endpoint, {
+  const apiKey = process.env.NEXT_PUBLIC_OPENAI_API_KEY;
+  const apiUrl = process.env.NEXT_PUBLIC_OPENAI_API_URL || 'https://api.openai.com/v1/chat/completions';
+  const model = process.env.NEXT_PUBLIC_OPENAI_MODEL || 'gpt-4o-mini';
+  
+  if (!apiKey) {
+    throw new Error(locale === 'en' ? 'API key not configured' : 'API 密钥未配置');
+  }
+  
+  const systemPrompt = [
+    locale === 'en' ? 'Respond in English.' : '请使用简体中文回应。',
+    typeHints[type]?.[locale === 'en' ? 'en' : 'zh'] || '',
+    systemHint,
+  ]
+    .filter(Boolean)
+    .join(' ');
+  
+  const response = await fetch(apiUrl, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(data),
+    headers: {
+      'Authorization': `Bearer ${apiKey}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      model,
+      temperature: 0.7,
+      messages: [
+        { role: 'system', content: systemPrompt },
+        ...messages.map((message: { role: string; content: string }) => ({
+          role: message.role,
+          content: message.content,
+        })),
+      ],
+    }),
   });
 
   if (!response.ok) {
-    const error = await response.json().catch(() => ({ error: 'Request failed' }));
-    throw new Error(error.error || `API Error: ${response.status}`);
+    const error = await response.text();
+    throw new Error(error);
   }
 
-  return response.json();
+  const result = await response.json();
+  const reply = result.choices?.[0]?.message?.content || '';
+
+  return {
+    reply,
+    conversationId: 'demo-' + Date.now(),
+  };
 }
 
 /**

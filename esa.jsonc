@@ -1,6 +1,5 @@
 {
   "assets": {
     "directory": "out"
-  },
-  "entry": "api/index.ts"
+  }
 }
