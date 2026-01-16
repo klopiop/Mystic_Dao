@@ -48,3 +48,6 @@ next-env.d.ts
 .gitignore
 
 nul
+
+# functions directory (not needed for ESA Pages edge functions)
+/functions/
