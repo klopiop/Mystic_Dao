@@ -19,7 +19,7 @@ export default {
         return await handleChat(request, env);
       }
 
-      return new Response(JSON.stringify({ error: 'Not Found' }), {
+      return new Response(JSON.stringify({ error: 'Not Found', path }), {
         status: 404,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
@@ -63,9 +63,9 @@ async function handleChat(request: Request, env: any): Promise<Response> {
       .filter(Boolean)
       .join(' ');
 
-    const apiKey = env.OPENAI_API_KEY || process.env.OPENAI_API_KEY;
-    const apiUrl = env.OPENAI_API_URL || process.env.OPENAI_API_URL || 'https://api.openai.com/v1/chat/completions';
-    const model = env.OPENAI_MODEL || process.env.OPENAI_MODEL || 'gpt-4o-mini';
+    const apiKey = env.OPENAI_API_KEY;
+    const apiUrl = env.OPENAI_API_URL || 'https://api.openai.com/v1/chat/completions';
+    const model = env.OPENAI_MODEL || 'gpt-4o-mini';
 
     if (!apiKey) {
       return new Response(
