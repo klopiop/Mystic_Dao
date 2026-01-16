@@ -5,6 +5,7 @@ import { useState, useEffect } from "react";
 import type { Locale } from "@/lib/i18n";
 import { sendChatMessage } from "@/lib/api";
 import { conversationStorage } from "@/lib/storage";
+import type { MedicalRecord } from "./MedicalRecordSidebar";
 
 type Message = {
   role: "user" | "assistant";
@@ -20,6 +21,7 @@ type ChatPanelProps = {
   type: "oracle" | "tcm";
   existingConversationId?: string;
   onSave?: () => void;
+  onMedicalRecordUpdate?: (record: MedicalRecord | null, isDiagnosed: boolean) => void;
 };
 
 export default function ChatPanel({
@@ -31,6 +33,7 @@ export default function ChatPanel({
   type,
   existingConversationId,
   onSave,
+  onMedicalRecordUpdate,
 }: ChatPanelProps) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
@@ -47,6 +50,142 @@ export default function ChatPanel({
       }
     }
   }, [existingConversationId]);
+
+  const extractMedicalRecord = (aiResponse: string): MedicalRecord | null => {
+    if (type !== "tcm") return null;
+
+    const record: MedicalRecord = {
+      lastUpdated: new Date().toISOString(),
+    };
+
+    const lines = aiResponse.split("\n");
+    let currentSection: string | null = null;
+
+    for (const line of lines) {
+      const trimmedLine = line.trim();
+
+      if (trimmedLine.includes("主诉") || trimmedLine.includes("Main Complaint") || trimmedLine.includes("您描述的症状")) {
+        currentSection = "mainComplaint";
+        continue;
+      } else if (trimmedLine.includes("辨证") || trimmedLine.includes("Pattern") || trimmedLine.includes("诊断") || trimmedLine.includes("Diagnosis")) {
+        currentSection = "diagnosis";
+        continue;
+      } else if (trimmedLine.includes("治则") || trimmedLine.includes("Treatment Principle") || trimmedLine.includes("治疗原则")) {
+        currentSection = "treatment";
+        continue;
+      } else if (trimmedLine.includes("饮食") || trimmedLine.includes("Diet") || trimmedLine.includes("食疗")) {
+        currentSection = "diet";
+        continue;
+      } else if (trimmedLine.includes("生活") || trimmedLine.includes("Lifestyle") || trimmedLine.includes("起居")) {
+        currentSection = "lifestyle";
+        continue;
+      } else if (trimmedLine.includes("穴位") || trimmedLine.includes("Acupoint") || trimmedLine.includes("按摩")) {
+        currentSection = "acupoints";
+        continue;
+      } else if (trimmedLine.includes("中药") || trimmedLine.includes("Herbal") || trimmedLine.includes("茶饮")) {
+        currentSection = "prescription";
+        continue;
+      }
+
+      if (currentSection && trimmedLine && !trimmedLine.startsWith("#") && !trimmedLine.startsWith("##")) {
+        const cleanLine = trimmedLine.replace(/^[•\-\*]\s*/, "").replace(/^\d+\.\s*/, "");
+
+        if (currentSection === "mainComplaint" && !record.mainComplaint) {
+          record.mainComplaint = cleanLine;
+        } else if (currentSection === "diagnosis") {
+          if (!record.diagnosis) record.diagnosis = {};
+          if (cleanLine.includes("证型") || cleanLine.includes("Pattern")) {
+            record.diagnosis.pattern = cleanLine.split(/[:：]/)[1]?.trim() || cleanLine;
+          } else if (cleanLine.includes("病机") || cleanLine.includes("Pathology")) {
+            record.diagnosis.pathology = cleanLine.split(/[:：]/)[1]?.trim() || cleanLine;
+          } else if (cleanLine.includes("体质") || cleanLine.includes("Constitution")) {
+            record.diagnosis.constitution = cleanLine.split(/[:：]/)[1]?.trim() || cleanLine;
+          }
+        } else if (currentSection === "treatment") {
+          if (!record.treatment) record.treatment = {};
+          if (cleanLine.includes("治则") || cleanLine.includes("Principle")) {
+            record.treatment.principle = cleanLine.split(/[:：]/)[1]?.trim() || cleanLine;
+          } else if (cleanLine.length > 5) {
+            if (!record.treatment.recommendations) record.treatment.recommendations = [];
+            record.treatment.recommendations.push(cleanLine);
+          }
+        } else if (currentSection === "diet") {
+          if (!record.treatment) record.treatment = {};
+          if (!record.treatment.diet) record.treatment.diet = [];
+          if (cleanLine.length > 2) {
+            record.treatment.diet.push(cleanLine);
+          }
+        } else if (currentSection === "lifestyle") {
+          if (!record.treatment) record.treatment = {};
+          if (!record.treatment.lifestyle) record.treatment.lifestyle = [];
+          if (cleanLine.length > 2) {
+            record.treatment.lifestyle.push(cleanLine);
+          }
+        } else if (currentSection === "acupoints") {
+          if (!record.treatment) record.treatment = {};
+          if (!record.treatment.acupoints) record.treatment.acupoints = [];
+          const points = cleanLine.split(/[,，、]/).map(p => p.trim()).filter(p => p);
+          record.treatment.acupoints.push(...points);
+        } else if (currentSection === "prescription") {
+          if (!record.prescription) record.prescription = {};
+          if (cleanLine.includes("茶饮") || cleanLine.includes("Tea")) {
+            record.prescription.herbalTea = cleanLine.split(/[:：]/)[1]?.trim() || cleanLine;
+          } else if (cleanLine.length > 2) {
+            if (!record.prescription.herbs) record.prescription.herbs = [];
+            const herbMatch = cleanLine.match(/([^\d]+)(\d+[克g]*)?/);
+            if (herbMatch) {
+              record.prescription.herbs.push({
+                name: herbMatch[1].trim(),
+                dosage: herbMatch[2] || undefined,
+              });
+            }
+          }
+        }
+      }
+    }
+
+    const hasData = record.mainComplaint || 
+                    record.diagnosis?.pattern || 
+                    record.treatment?.principle ||
+                    record.treatment?.diet?.length ||
+                    record.prescription?.herbalTea;
+
+    return hasData ? record : null;
+  };
+
+  const formatAIResponse = (response: string): string => {
+    let formatted = response;
+
+    formatted = formatted.replace(/【确诊】/g, "");
+    formatted = formatted.replace(/\[DIAGNOSED\]/g, "");
+
+    formatted = formatted.replace(/📌/g, "");
+    formatted = formatted.replace(/🩺/g, "");
+    formatted = formatted.replace(/🔍/g, "");
+    formatted = formatted.replace(/🧭/g, "");
+    formatted = formatted.replace(/📋/g, "");
+    formatted = formatted.replace(/🌿/g, "");
+    formatted = formatted.replace(/💡/g, "");
+    formatted = formatted.replace(/⚠️/g, "");
+    formatted = formatted.replace(/🎯/g, "");
+    formatted = formatted.replace(/✓/g, "");
+    formatted = formatted.replace(/✗/g, "");
+
+    formatted = formatted.replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>");
+
+    formatted = formatted.replace(/#{3,}\s*(.*?)\s*$/gm, "### $1");
+    formatted = formatted.replace(/#{2}\s*(.*?)\s*$/gm, "## $1");
+    formatted = formatted.replace(/#{1}\s*(.*?)\s*$/gm, "# $1");
+
+    formatted = formatted.replace(/^\s*\d+\.\s+/gm, "• ");
+    formatted = formatted.replace(/^\s*[-*]\s+/gm, "• ");
+
+    formatted = formatted.replace(/\n{3,}/g, "\n\n");
+
+    formatted = formatted.trim();
+
+    return formatted;
+  };
 
   const submit = async () => {
     if (!input.trim() || loading) return;
@@ -67,11 +206,17 @@ export default function ChatPanel({
       if (data.conversationId) {
         setConversationId(data.conversationId);
       }
-      const finalMessages = [
+      const finalMessages: Message[] = [
         ...nextMessages,
         { role: "assistant", content: data.reply },
       ];
       setMessages(finalMessages);
+
+      if (type === "tcm") {
+        const medicalRecord = extractMedicalRecord(data.reply);
+        const isDiagnosed = data.reply.includes("【确诊】") || data.reply.includes("[DIAGNOSED]");
+        onMedicalRecordUpdate?.(medicalRecord, isDiagnosed);
+      }
       
       if (conversationId) {
         conversationStorage.update(conversationId, { messages: finalMessages });
@@ -82,7 +227,7 @@ export default function ChatPanel({
       setMessages((current) => [
         ...current,
         {
-          role: "assistant",
+          role: "assistant" as const,
           content:
             locale === "zh"
               ? `神机暂未回应：${errorMessage}`
@@ -157,7 +302,15 @@ export default function ChatPanel({
                     : "bg-black/60 text-zinc-200 border border-gold-muted/20"
                 }`}
               >
-                {message.content}
+                {message.role === "assistant" ? (
+                  <div 
+                    dangerouslySetInnerHTML={{ 
+                      __html: formatAIResponse(message.content).replace(/\n/g, "<br />") 
+                    }} 
+                  />
+                ) : (
+                  message.content
+                )}
               </div>
             </div>
           ))}

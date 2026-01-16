@@ -1,8 +1,13 @@
+type Message = {
+  role: "user" | "assistant";
+  content: string;
+};
+
 interface Conversation {
   id: string;
   type: 'oracle' | 'tcm';
   title: string;
-  messages: Array<{ role: string; content: string }>;
+  messages: Message[];
   createdAt: string;
   updatedAt: string;
 }
