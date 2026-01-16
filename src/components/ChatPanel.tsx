@@ -1,9 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 
 import type { Locale } from "@/lib/i18n";
 import { sendChatMessage } from "@/lib/api";
+import { conversationStorage } from "@/lib/storage";
 
 type Message = {
   role: "user" | "assistant";
@@ -17,6 +18,8 @@ type ChatPanelProps = {
   placeholder: string;
   systemHint: string;
   type: "oracle" | "tcm";
+  existingConversationId?: string;
+  onSave?: () => void;
 };
 
 export default function ChatPanel({
@@ -26,11 +29,24 @@ export default function ChatPanel({
   placeholder,
   systemHint,
   type,
+  existingConversationId,
+  onSave,
 }: ChatPanelProps) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
-  const [conversationId, setConversationId] = useState<string | undefined>(undefined);
+  const [conversationId, setConversationId] = useState<string | undefined>(existingConversationId);
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+
+  useEffect(() => {
+    if (existingConversationId) {
+      const conversations = conversationStorage.getAll();
+      const existing = conversations.find(c => c.id === existingConversationId);
+      if (existing) {
+        setMessages(existing.messages);
+      }
+    }
+  }, [existingConversationId]);
 
   const submit = async () => {
     if (!input.trim() || loading) return;
@@ -38,6 +54,7 @@ export default function ChatPanel({
     setMessages(nextMessages);
     setInput("");
     setLoading(true);
+    setHasUnsavedChanges(true);
 
     try {
       const data = await sendChatMessage({
@@ -50,10 +67,15 @@ export default function ChatPanel({
       if (data.conversationId) {
         setConversationId(data.conversationId);
       }
-      setMessages((current) => [
-        ...current,
+      const finalMessages = [
+        ...nextMessages,
         { role: "assistant", content: data.reply },
-      ]);
+      ];
+      setMessages(finalMessages);
+      
+      if (conversationId) {
+        conversationStorage.update(conversationId, { messages: finalMessages });
+      }
     } catch (error) {
       console.error('Chat error:', error);
       const errorMessage = error instanceof Error ? error.message : String(error);
@@ -72,13 +94,44 @@ export default function ChatPanel({
     }
   };
 
+  const handleSave = () => {
+    if (messages.length === 0) return;
+
+    const title = messages[0].content.slice(0, 50);
+    
+    if (conversationId) {
+      conversationStorage.update(conversationId, { messages, title });
+    } else {
+      const newConversation = conversationStorage.save({
+        type,
+        title,
+        messages,
+      });
+      setConversationId(newConversation.id);
+    }
+    
+    setHasUnsavedChanges(false);
+    onSave?.();
+  };
+
   return (
     <div className="space-y-8">
-      <div className="rounded-[28px] border border-gold-muted/40 bg-black/60 px-6 py-10 md:px-10">
-        <h1 className="text-3xl font-semibold text-gold-strong md:text-4xl">
-          {title}
-        </h1>
-        <p className="mt-3 text-sm text-zinc-400 md:text-base">{subtitle}</p>
+      <div className="flex items-center justify-between gap-4">
+        <div className="flex-1 rounded-[28px] border border-gold-muted/40 bg-black/60 px-6 py-10 md:px-10">
+          <h1 className="text-3xl font-semibold text-gold-strong md:text-4xl">
+            {title}
+          </h1>
+          <p className="mt-3 text-sm text-zinc-400 md:text-base">{subtitle}</p>
+        </div>
+        {hasUnsavedChanges && (
+          <button
+            onClick={handleSave}
+            className="rounded-full border border-gold-soft/60 bg-gold-soft/15 px-6 py-3 text-sm font-semibold text-gold-strong transition hover:bg-gold-soft/25"
+            type="button"
+          >
+            {locale === "zh" ? "保存纪要" : "Save"}
+          </button>
+        )}
       </div>
 
       <div className="rounded-[28px] border border-gold-muted/40 bg-black/70 p-6 md:p-10">
