@@ -63,6 +63,13 @@ export async function sendChatMessage(data: {
   const apiUrl = process.env.NEXT_PUBLIC_OPENAI_API_URL || 'https://api.openai.com/v1/chat/completions';
   const model = process.env.NEXT_PUBLIC_OPENAI_MODEL || 'gpt-4o-mini';
   
+  console.log('API 调用信息:', { 
+    hasApiKey: !!apiKey,
+    apiUrl,
+    model,
+    messageCount: messages.length
+  });
+  
   if (!apiKey) {
     throw new Error(locale === 'en' ? 'API key not configured' : 'API 密钥未配置');
   }
@@ -75,31 +82,39 @@ export async function sendChatMessage(data: {
     .filter(Boolean)
     .join(' ');
   
+  const requestBody = {
+    model,
+    temperature: 0.7,
+    messages: [
+      { role: 'system', content: systemPrompt },
+      ...messages.map((message: { role: string; content: string }) => ({
+        role: message.role,
+        content: message.content,
+      })),
+    ],
+  };
+  
+  console.log('请求体:', JSON.stringify(requestBody, null, 2));
+  
   const response = await fetch(apiUrl, {
     method: 'POST',
     headers: {
       'Authorization': `Bearer ${apiKey}`,
       'Content-Type': 'application/json',
     },
-    body: JSON.stringify({
-      model,
-      temperature: 0.7,
-      messages: [
-        { role: 'system', content: systemPrompt },
-        ...messages.map((message: { role: string; content: string }) => ({
-          role: message.role,
-          content: message.content,
-        })),
-      ],
-    }),
+    body: JSON.stringify(requestBody),
   });
 
+  console.log('API 响应状态:', response.status, response.statusText);
+  
   if (!response.ok) {
-    const error = await response.text();
-    throw new Error(error);
+    const errorText = await response.text();
+    console.error('API 错误响应:', errorText);
+    throw new Error(`API 调用失败 (${response.status}): ${errorText}`);
   }
 
   const result = await response.json();
+  console.log('API 成功响应:', result);
   const reply = result.choices?.[0]?.message?.content || '';
 
   return {

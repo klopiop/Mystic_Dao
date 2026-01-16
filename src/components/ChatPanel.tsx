@@ -54,15 +54,17 @@ export default function ChatPanel({
         ...current,
         { role: "assistant", content: data.reply },
       ]);
-    } catch {
+    } catch (error) {
+      console.error('Chat error:', error);
+      const errorMessage = error instanceof Error ? error.message : String(error);
       setMessages((current) => [
         ...current,
         {
           role: "assistant",
           content:
             locale === "zh"
-              ? "神机暂未回应，请稍后再试。"
-              : "The oracle is silent. Please try again soon.",
+              ? `神机暂未回应：${errorMessage}`
+              : `The oracle is silent: ${errorMessage}`,
         },
       ]);
     } finally {
